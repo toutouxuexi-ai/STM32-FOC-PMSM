@@ -15,6 +15,7 @@ typedef struct
      float Tpwm;       /* 电机PWM周期 */
 	 int8_t Dir;
 	float speed_ref;
+	float angle_ref;
 } ExtX;
 
 typedef struct

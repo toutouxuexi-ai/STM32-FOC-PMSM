@@ -19,8 +19,10 @@ typedef struct
 extern Current_PID_DEF Current_D_PID;
 extern Current_PID_DEF Current_Q_PID;
 extern Current_PID_DEF Speed_PID;
-
+extern Current_PID_DEF Angle_PID;
 void PID_Init(void);
 void Current_PID_Calc(float ref, float input, float* output, Current_PID_DEF* current_pid);
 void Speed_PID_Calc(float ref, float input, float* output, Current_PID_DEF* Speed_PID);
+
+void position_PID_Calc(float ref, float input, float* output, Current_PID_DEF* position_PID);
 #endif

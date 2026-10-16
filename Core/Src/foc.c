@@ -87,6 +87,7 @@ void FOC_Init(void)
 	Current_ref.Iq = 1.0f;  /* Iq给定1A起步; 若堵转失步再往上加, 转稳后往下试 */
 
 	rtX.speed_ref = 1256.0f;  
+	rtX.angle_ref = 1.5f;
 	PID_Init();            
 }
 
@@ -107,7 +108,10 @@ void FOC_Run(void)
 
     int16_t d = (int16_t)(cnt - cnt_last);   // 回绕在这里自动抵消，相当于先uint在int
     cnt_last = cnt;
-	Encoder.angle += (float)d * (2.0f * PI / 1000.0f);
+	float d_angle = (float)d * (2.0f * PI / 1000.0f);   /* 这一拍新转的电角度 */
+
+    Encoder.angle      += d_angle;        /* 电角度: 0~2π回绕用 */
+    Encoder.angle_mach += d_angle / 4.0f /  (3.14159f *2.0f) *360.0f; /* 机械角度: 连续累计, 不回绕 */
 	
 	if(Encoder.angle > 2*PI)
 		Encoder.angle -= 2*PI;

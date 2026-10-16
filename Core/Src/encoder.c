@@ -94,6 +94,8 @@ void SysTick_ISR_encoder(void)
 
     Encoder_SpeedCalc();
     Encoder.speed_filter = 0.40f * Encoder.speed + 0.60f * Encoder.speed_filter;
+	
+	position_PID_Calc(rtX.angle_ref, Encoder.angle_mach, &rtX.speed_ref, &Angle_PID);
     Speed_PID_Calc(speed_ramp, Encoder.speed_filter, &Current_ref.Iq, &Speed_PID);  /* 用speed_ramp */
 }
 

@@ -128,12 +128,12 @@ FOC_Init();	            /* 必须先初始化Udc/Tpwm, 校准的SVPWM才有效 *
   while (1)
   {
 	// printf ("%f,%f,%f,%d\n",Encoder.speed, Encoder.angle,rtX.theta,Encoder.Z);
-	 // HAL_Delay(10);
+	 HAL_Delay(10);
 	 // printf("%f,%f,%f,%f,%f,%f,%f\r\n",rtY.Tcmp1,rtY.Tcmp2,rtY.Tcmp3,rtX.theta,I_uvw[0],I_uvw[1],I_uvw[2]);//HAL_Delay(10);
 	//  printf("%f,%f,%d,%f,%f,%f\n",rtX.theta,Hall.angle,Hall.state,Hall.speed,Voltage_DQ.Vq,Hall.speed_filter);
-	 printf("%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+	 printf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
  rtX.theta,Voltage_DQ.Vd, Voltage_DQ.Vq,Current_dq.Id, Current_dq.Iq, 
-	  Current_ref.Iq,Encoder.speed,Encoder.speed_filter,rtX.speed_ref);
+	  Current_ref.Iq,Encoder.speed,Encoder.speed_filter,rtX.speed_ref,Encoder.angle_mach);
 
 
 	  key = key_scan(0);
@@ -142,18 +142,20 @@ FOC_Init();	            /* 必须先初始化Udc/Tpwm, 校准的SVPWM才有效 *
             switch (key)
             {
                 case KEY0_PRES:             /* ����LED0(RED)��ת */
-                      //HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_10);
-				rtX.speed_ref = 1256.0f;
-							
+                   //HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_10);
+				//rtX.speed_ref = 1256.0f;
+					rtX.angle_ref =0.0f;		
                     break;
 
                 case KEY1_PRES:             /* ����LED1(GREEN)��ת */
-                      rtX.speed_ref = 0.0f;
+					rtX.angle_ref -=20.0f;
+                      //rtX.speed_ref = 0.0f;
 						//else if(rtX.speed_ref < 0 ){rtX.speed_ref *=(-1) ;}	
                     break;
 
                 case KEY2_PRES:             /* ͬʱ����LED0, LED1��ת */
-                          if(rtX.speed_ref > 0.0f) rtX.speed_ref+=10.0f;  /* 正数域, 不减到负 */
+					rtX.angle_ref +=360.0f;
+                         // if(rtX.speed_ref > 0.0f) rtX.speed_ref+=10.0f;  /* 正数域, 不减到负 */
                     break;
                 default : break;
             }    

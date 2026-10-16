@@ -22,6 +22,9 @@ typedef struct
 	uint8_t  stall;         /* 1=停转/堵转(Stall)标志 */
 	uint8_t Z;
 	uint8_t flag;
+	
+	float angle_mach;
+	
 } Encoder_Typedef;
 
 
