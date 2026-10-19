@@ -3,7 +3,8 @@
 #include "pid.h"    /* 电流环PI模块 */
 #include "encoder.h"
 #include "adc.h"    /* ADC偏置校准用 */
-
+#include "smo.h"
+#include "if_drag.h"
 /* ==================== 全局变量定义 ==================== */
 ExtX rtX;                              /* 输入结构体变量 */
 ExtY rtY;                              /* 输出结构体变量 */
@@ -86,7 +87,7 @@ void FOC_Init(void)
 	Current_ref.Id = 0.0f;
 	Current_ref.Iq = 1.0f;  /* Iq给定1A起步; 若堵转失步再往上加, 转稳后往下试 */
 
-	rtX.speed_ref = 1256.0f;  
+	rtX.speed_ref = 500.0f;  
 	rtX.angle_ref = 1.5f;
 	PID_Init();            
 }
@@ -111,8 +112,25 @@ void FOC_Run(void)
 	float d_angle = (float)d * (2.0f * PI / 1000.0f);   /* 这一拍新转的电角度 */
 
     Encoder.angle      += d_angle;        /* 电角度: 0~2π回绕用 */
-    Encoder.angle_mach += d_angle / 4.0f /  (3.14159f *2.0f) *360.0f; /* 机械角度: 连续累计, 不回绕 */
+   // Encoder.angle_mach += d_angle / 4.0f /  (3.14159f *2.0f) *360.0f; /* 机械角度: 连续累计, 不回绕 */
+	IF_Drag_Update();
 	
+//	if ( s_state== IF_IDLE)
+//    rtX.theta = SMO_OUTPUT.theta_pll;   // 用滑膜角度闭环
+if (s_state == IF_IDLE)
+{
+    if (trans_cnt < IF_TRANS_N)
+    {
+        trans_cnt++;
+        float ratio = 1.0f - (float)trans_cnt / (float)IF_TRANS_N;  /* 1→0 线性 */
+        rtX.theta = SMO_OUTPUT.theta_pll + trans_offset * ratio;    /* 实时跟随+偏移衰减 */
+    }
+    else
+    {
+        rtX.theta = SMO_OUTPUT.theta_pll;   /* 200步走完: 直接用滑膜角度 */
+    }
+}
+
 	if(Encoder.angle > 2*PI)
 		Encoder.angle -= 2*PI;
 	else if(Encoder.angle < 0)
@@ -122,6 +140,8 @@ void FOC_Run(void)
 	Current_Abc.Ia = (ADC_Offset.u - ADC2->JDR1*3.3f/4096.0f)/0.12f;
 	Current_Abc.Ib = (ADC_Offset.v - ADC1->JDR1*3.3f/4096.0f)/0.12f;   /* 老师形式: 无采样互换 */
 	Current_Abc.Ic = (ADC_Offset.w - ADC3->JDR1*3.3f/4096.0f)/0.12f;
+	
+	
 	/* 回退用这三行:
 	Current_Abc.Ia = (1.25f - ADC2->JDR1*3.3f/4096.0f)/0.12f;
 	Current_Abc.Ib = (1.25f - ADC1->JDR1*3.3f/4096.0f)/0.12f;
@@ -137,9 +157,17 @@ void FOC_Run(void)
 	/* 电流环: D/Q轴各一个PI, 误差ref-fb -> Vd/Vq (此前被注释, 已恢复) */
 	Current_PID_Calc(Current_ref.Id, Current_dq.Id, &Voltage_DQ.Vd, &Current_D_PID);
 	Current_PID_Calc(Current_ref.Iq, Current_dq.Iq, &Voltage_DQ.Vq, &Current_Q_PID);
-
+	
+	Rev_Park_Transf(Voltage_DQ, Transf_Cos_Sin, &Voltage_Alpha_Beta);  /* RevPark变换 */
+	
+    SMO_INPUT.Ialpha = Current_Alpbet.Ialpha;
+	SMO_INPUT.Ibeta = Current_Alpbet.Ibeta;
+	SMO_INPUT.Valpha = Voltage_Alpha_Beta.Valpha;
+	SMO_INPUT.Vbeta = Voltage_Alpha_Beta.Vbeta;
+	
+	SMO_Run(&SMO_INPUT,&SMO_OUTPUT);
                     /* 计算三角函数 */
-    Rev_Park_Transf(Voltage_DQ, Transf_Cos_Sin, &Voltage_Alpha_Beta);  /* RevPark变换 */
+    
     SVPWM_Calc(Voltage_Alpha_Beta, rtX.Udc, rtX.Tpwm);             /* SVPWM调制 */
 }
 

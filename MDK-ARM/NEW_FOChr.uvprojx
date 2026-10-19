@@ -640,6 +640,26 @@
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32f4xx_hal_msp.c</FilePath>
             </File>
+            <File>
+              <FileName>smo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\smo.c</FilePath>
+            </File>
+            <File>
+              <FileName>smo.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Core\Src\smo.h</FilePath>
+            </File>
+            <File>
+              <FileName>if_drag.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\if_drag.c</FilePath>
+            </File>
+            <File>
+              <FileName>if_drag.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Core\Src\if_drag.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

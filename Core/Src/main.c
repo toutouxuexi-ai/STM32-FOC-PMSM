@@ -23,7 +23,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-
+#include "if_drag.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "pmsm.h"
@@ -32,6 +32,7 @@
 #include "key.h"
 #include "hall.h"
 #include "pid.h"
+#include "smo.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -113,6 +114,8 @@ Motor_Init();
 ADC_OffsetCalib();       /* 零流标定ADC偏置: 此时CCR1-3=0无电流, TIM1已跑有CC4触发 */
 Encoder_Init();
 FOC_Init();	            /* 必须先初始化Udc/Tpwm, 校准的SVPWM才有效 */
+IF_Drag_Start();
+
       /* 校准(内部停/恢复FOC中断) */
 //Hall_Init();
 
@@ -128,12 +131,17 @@ FOC_Init();	            /* 必须先初始化Udc/Tpwm, 校准的SVPWM才有效 *
   while (1)
   {
 	// printf ("%f,%f,%f,%d\n",Encoder.speed, Encoder.angle,rtX.theta,Encoder.Z);
-	 HAL_Delay(10);
+	HAL_Delay(10);
 	 // printf("%f,%f,%f,%f,%f,%f,%f\r\n",rtY.Tcmp1,rtY.Tcmp2,rtY.Tcmp3,rtX.theta,I_uvw[0],I_uvw[1],I_uvw[2]);//HAL_Delay(10);
 	//  printf("%f,%f,%d,%f,%f,%f\n",rtX.theta,Hall.angle,Hall.state,Hall.speed,Voltage_DQ.Vq,Hall.speed_filter);
-	 printf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
- rtX.theta,Voltage_DQ.Vd, Voltage_DQ.Vq,Current_dq.Id, Current_dq.Iq, 
-	  Current_ref.Iq,Encoder.speed,Encoder.speed_filter,rtX.speed_ref,Encoder.angle_mach);
+	
+float err_ = Encoder.angle - SMO_OUTPUT.theta_pll; 
+if (err_ >  PI) err_ -= 2.0f * PI;                                  /* 差出+180°以上: 实际是负的小误差 */
+else if (err_< -PI) err_+= 2.0f * PI;                              /* 差出-180°以下: 实际是正的小误差 */
+	  printf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+ k,rtX.speed_ref, rtX.theta,Current_ref.Iq, Current_dq.Iq, 
+	 SMO_OUTPUT.speed ,err_* 57.2958f, 
+	  Encoder.angle,SMO_OUTPUT.theta_pll,Encoder.speed,SMO_OUTPUT.speed_pll);
 
 
 	  key = key_scan(0);
@@ -143,18 +151,19 @@ FOC_Init();	            /* 必须先初始化Udc/Tpwm, 校准的SVPWM才有效 *
             {
                 case KEY0_PRES:             /* ����LED0(RED)��ת */
                    //HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_10);
-				//rtX.speed_ref = 1256.0f;
-					rtX.angle_ref =0.0f;		
+				rtX.speed_ref += 200.0f;
+					//rtX.angle_ref =0.0f;		
                     break;
 
-                case KEY1_PRES:             /* ����LED1(GREEN)��ת */
-					rtX.angle_ref -=20.0f;
+                case KEY1_PRES:            
+					rtX.speed_ref -= 100.0f;
+					//rtX.angle_ref -=20.0f;
                       //rtX.speed_ref = 0.0f;
 						//else if(rtX.speed_ref < 0 ){rtX.speed_ref *=(-1) ;}	
                     break;
 
                 case KEY2_PRES:             /* ͬʱ����LED0, LED1��ת */
-					rtX.angle_ref +=360.0f;
+					rtX.speed_ref -=50.0f;
                          // if(rtX.speed_ref > 0.0f) rtX.speed_ref+=10.0f;  /* 正数域, 不减到负 */
                     break;
                 default : break;

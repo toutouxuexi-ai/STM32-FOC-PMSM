@@ -5,6 +5,7 @@ Current_PID_DEF Current_D_PID;
 Current_PID_DEF Current_Q_PID;
 Current_PID_DEF Speed_PID;
 Current_PID_DEF Angle_PID;
+Current_PID_DEF AMO_PID;
 /* ==================== PID初始化 ====================
  * 本组参数为带电机实调整定, 实测电流跟踪效果良好, 以实测效果为准:
  * Kp=1, Ki=0.01(离散值, 已含Ts; TIM1中心对齐PWM=10kHz, Ts=0.1ms)
@@ -29,8 +30,8 @@ Current_D_PID.I_sum = 0.0f;
 	Current_Q_PID.I_sum = 0.0f;
 	
 	Speed_PID.Kp = 0.005f;
-	Speed_PID.Ki = 0.0011f;
-	Speed_PID.Kd = 0.8f;
+	Speed_PID.Ki = 0.00001f;
+	Speed_PID.Kd = 0.01f;
 	Speed_PID.Up_limit = 5.9f;
 	Speed_PID.Down_limit = -5.9f;   
 	Speed_PID.I_sum = 0.0f;
@@ -41,6 +42,13 @@ Current_D_PID.I_sum = 0.0f;
 	Angle_PID.Up_limit = 100.0f;
 	Angle_PID.Down_limit = -100.0f;   
 	Angle_PID.I_sum = 0.0f;
+	
+	AMO_PID.Kp = 60.2f;
+	AMO_PID.Ki = 5.00f;
+	AMO_PID.Kd = 0.0f;
+	AMO_PID.Up_limit = 2000.0f;
+	AMO_PID.Down_limit = -2000.0f;   
+	AMO_PID.I_sum = 0.0f;
 	
 	
 }
@@ -77,6 +85,7 @@ void Current_PID_Calc(float ref, float input, float* output, Current_PID_DEF* cu
 
 void Speed_PID_Calc(float ref, float input, float* output, Current_PID_DEF* Speed_PID)
 {
+	static float err_last=0;
 	Speed_PID->err = ref - input;
 	Speed_PID->err_Kp = Speed_PID->Kp * Speed_PID->err;
 
@@ -93,7 +102,10 @@ void Speed_PID_Calc(float ref, float input, float* output, Current_PID_DEF* Spee
 	if(Speed_PID->I_sum < Speed_PID->Down_limit)
 		Speed_PID->I_sum = Speed_PID->Down_limit;
 
-	*output = Speed_PID->err_Kp + Speed_PID->I_sum;
+	
+	float d_out = Speed_PID->Kd * (Speed_PID->err - err_last);
+	*output = Speed_PID->err_Kp + Speed_PID->I_sum+d_out;
+    err_last = Speed_PID->err;
 	if(*output > Speed_PID->Up_limit)   *output = Speed_PID->Up_limit;
 	if(*output < Speed_PID->Down_limit) *output = Speed_PID->Down_limit;
 }
@@ -118,4 +130,29 @@ void position_PID_Calc(float ref, float input, float* output, Current_PID_DEF* a
 	*output = angle_PID->err_Kp + angle_PID->I_sum;
 	if(*output > angle_PID->Up_limit)   *output = angle_PID->Up_limit;
 	if(*output < angle_PID->Down_limit) *output = angle_PID->Down_limit;
+}
+
+void SMO_PID_Calc(float err, float* output, Current_PID_DEF* AMO_PID)
+{
+	float temp;
+	
+	AMO_PID->err = err;
+	AMO_PID->err_Kp = AMO_PID->Kp * AMO_PID->err;
+
+	/* 抗积分饱和: 输出已顶到限幅且误差同向时, 积分不充电 */
+	float out_try = AMO_PID->err_Kp + AMO_PID->I_sum;
+	if (!((out_try >= AMO_PID->Up_limit   && AMO_PID->err > 0) ||
+	      (out_try <= AMO_PID->Down_limit && AMO_PID->err < 0)))
+	{
+		AMO_PID->I_sum += AMO_PID->Ki * err;
+	}
+
+	if(AMO_PID->I_sum > AMO_PID->Up_limit)
+		AMO_PID->I_sum = AMO_PID->Up_limit;
+	if(AMO_PID->I_sum < AMO_PID->Down_limit)
+		AMO_PID->I_sum = AMO_PID->Down_limit;
+
+	*output = AMO_PID->err_Kp + AMO_PID->I_sum;
+	if(*output > AMO_PID->Up_limit)   *output = AMO_PID->Up_limit;
+	if(*output < AMO_PID->Down_limit) *output = AMO_PID->Down_limit;
 }

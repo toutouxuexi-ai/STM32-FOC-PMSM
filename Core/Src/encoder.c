@@ -3,6 +3,8 @@
 #include "tim.h"
 #include "adc.h"
 #include "pid.h"
+#include "if_drag.h"
+#include "smo.h"
 Encoder_Typedef Encoder;
 
 
@@ -95,8 +97,40 @@ void SysTick_ISR_encoder(void)
     Encoder_SpeedCalc();
     Encoder.speed_filter = 0.40f * Encoder.speed + 0.60f * Encoder.speed_filter;
 	
-	position_PID_Calc(rtX.angle_ref, Encoder.angle_mach, &rtX.speed_ref, &Angle_PID);
-    Speed_PID_Calc(speed_ramp, Encoder.speed_filter, &Current_ref.Iq, &Speed_PID);  /* 用speed_ramp */
+	
+	
+	static uint8_t ok_cnt = 0;
+
+if (s_state == IF_RUNNING)
+{
+    if (fabsf(SMO_OUTPUT.speed_pll - s_speed_if) < 15.0f)
+    {
+        if (++ok_cnt >= 50)
+        {
+            s_state = IF_IDLE;
+            speed_ramp     = 400.0f;   // ① 速度给定对齐当前速度
+            //Speed_PID.I_sum = 2.0f;    // ② 积分预载当前Iq
+			s_state = IF_IDLE;
+speed_ramp      = s_speed_if;    /* 原来写400, 改成对齐当前速度=500 */
+Speed_PID.I_sum = 2.0f;
+/* 相位过渡初始化 */
+trans_offset = s_theta_if - SMO_OUTPUT.theta_pll;
+while (trans_offset >  PI) trans_offset -= 2.0f*PI;
+while (trans_offset < -PI) trans_offset += 2.0f*PI;
+trans_cnt = 0;
+
+        }
+    }
+    else
+    {
+        ok_cnt = 0;
+    }
+}
+if (s_state== IF_IDLE)
+	Speed_PID_Calc(speed_ramp, SMO_OUTPUT.speed_pll, &Current_ref.Iq, &Speed_PID);
+	
+	//position_PID_Calc(rtX.angle_ref, Encoder.angle_mach, &rtX.speed_ref, &Angle_PID);
+    //Speed_PID_Calc(speed_ramp, Encoder.speed_filter, &Current_ref.Iq, &Speed_PID);  /* 用speed_ramp */
 }
 
 //void SysTick_ISR_encoder(void)

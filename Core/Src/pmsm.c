@@ -5,6 +5,7 @@
 #include "foc.h"
 #include "hall.h"
 #include "encoder.h"
+#include "if_drag.h"
 float I_uvw[3];
 float power;
 float  temper;
@@ -25,6 +26,7 @@ HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
 //adc注入和规则开启	
 HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_DMABuff, 2);
 //这里的中断使能放到校准的后面才打开了
+//HAL_ADCEx_InjectedStart_IT(&hadc1); 
 HAL_ADCEx_InjectedStart(&hadc2);
 HAL_ADCEx_InjectedStart(&hadc3);
 
@@ -37,23 +39,23 @@ void Motor_Run(void)
 	static float theta;
 	
 
-	Hall.angle_inc = Hall.speed * 0.0001f;
-	
-	
-	Hall.angle += Hall.angle_inc;
-	
+//	Hall.angle_inc = Hall.speed * 0.0001f;
+//	
+//	
+//	Hall.angle += Hall.angle_inc;
+//	
+//	
+
+//	if(Hall.angle > 2*PI)
+//		Hall.angle -= 2*PI;
+//	if(Hall.angle < 0.0f)
+//		Hall.angle += 2*PI;
 	
 
-	if(Hall.angle > 2*PI)
-		Hall.angle -= 2*PI;
-	if(Hall.angle < 0.0f)
-		Hall.angle += 2*PI;
-	
 
-
-if(cnt<10000)
-	{
-	//cnt++;	                     /* 开环拖动1s后切闭环; 注释掉会永远开环 */
+//if(cnt<10000)
+//	
+//	cnt++;	                     /* 开环拖动1s后切闭环; 注释掉会永远开环 */
 //		if(rtX.speed_ref > 0){theta += 0.005f;}
 //	else if(rtX.speed_ref < 0){theta -= 0.005f;}
 //	
@@ -61,16 +63,16 @@ if(cnt<10000)
 //		theta -= 2*PI;
 //	else if(theta < 0)
 //		theta += 2*PI;
-	
-	rtX.theta=Encoder.angle;
-	}
-	
-else{
-		
-	rtX.theta = Hall.angle;
-	//rtX.theta = Hall.angle;
-	
-	}
+//	
+//	rtX.theta=theta;
+//	}
+//	
+//else{
+//		
+//	rtX.theta = Hall.angle;
+//	//rtX.theta = Hall.angle;
+//	
+//	}
 	
 	/* 采样电路: Iout = 6*0.02Ω*I + 1.25V, 灵敏度0.12V/A, 偏置1.25V
 	   下桥采样方向与电机惯例相反, 整体取反使 正电流=流入电机
